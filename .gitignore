@@ -1,0 +1,115 @@
+# ===== Frontend (Next.js) =====
+# Dependencies
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+
+# Testing
+frontend/coverage/
+
+# Next.js
+frontend/.next/
+frontend/out/
+
+# Production
+frontend/build/
+
+# Debug
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Local env files
+frontend/.env
+frontend/.env*.local
+
+# Vercel
+frontend/.vercel
+
+# ===== Backend (Python) =====
+# Byte-compiled / optimized / DLL files
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+
+# C extensions
+backend/*.so
+
+# Virtual Environment
+backend/venv/
+backend/env/
+backend/ENV/
+backend/env.bak/
+backend/venv.bak/
+
+# Environment Variables
+backend/.env
+backend/.env.*
+
+# Firebase Admin SDK
+backend/serviceAccountKey.json
+backend/firebase-adminsdk*.json
+
+# Logs
+backend/*.log
+backend/logs/
+
+# Database
+backend/*.db
+backend/*.sqlite3
+
+# Distribution / packaging
+backend/.Python
+backend/build/
+backend/develop-eggs/
+backend/dist/
+backend/downloads/
+backend/eggs/
+backend/.eggs/
+backend/lib/
+backend/lib64/
+backend/parts/
+backend/sdist/
+backend/var/
+backend/wheels/
+backend/*.egg-info/
+backend/.installed.cfg
+backend/*.egg
+
+# ===== Global =====
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Firebase
+.firebase/
+firebase-debug.log
+.firebaserc
+firestore-debug.log
+ui-debug.log
+
+# Certificates
+*.pem
+
+# Misc
+.cache/
+.temp/
+.tmp/
