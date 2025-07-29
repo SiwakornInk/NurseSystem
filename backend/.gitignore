@@ -69,3 +69,6 @@ htmlcov/
 
 # Scripts
 create_admin.py
+create_users.py
+delete_all_users.py
+mock_users.txt
