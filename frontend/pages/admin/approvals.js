@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth, ProtectedRoute } from '../../lib/auth';
 import Layout from '../../components/Layout';
-import { db, SHIFT_TYPES } from '../../lib/firebase';
+import { db, SHIFT_TYPES, SHIFT_CODES } from '../../lib/firebase';
 import { collection, query, where, getDocs, doc, updateDoc, addDoc, getDoc } from 'firebase/firestore';
 import Head from 'next/head';
 
@@ -9,22 +9,30 @@ export default function AdminApprovals() {
   const { userData } = useAuth();
   const [hardRequests, setHardRequests] = useState([]);
   const [swapRequests, setSwapRequests] = useState([]);
+  const [softRequests, setSoftRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState('hard');
+  
+  // สำหรับเลือกเดือนในแท็บคำขอรายเดือน
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   useEffect(() => {
     if (userData) {
       loadRequests();
     }
-  }, [userData]);
+  }, [userData, selectedMonth]);
 
   const loadRequests = async () => {
     setLoading(true);
     try {
       await Promise.all([
         loadHardRequests(),
-        loadSwapRequests()
+        loadSwapRequests(),
+        loadSoftRequests()
       ]);
     } catch (error) {
       console.error('Error loading requests:', error);
@@ -82,6 +90,34 @@ export default function AdminApprovals() {
 
     requests.sort((a, b) => a.createdAt.toDate() - b.createdAt.toDate());
     setSwapRequests(requests);
+  };
+
+  const loadSoftRequests = async () => {
+    const [year, month] = selectedMonth.split('-');
+    const requestsRef = collection(db, 'softRequests');
+    const q = query(
+      requestsRef,
+      where('year', '==', parseInt(year)),
+      where('month', '==', parseInt(month))
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const requests = [];
+
+    for (const docSnapshot of querySnapshot.docs) {
+      const requestData = docSnapshot.data();
+      
+      const userDoc = await getDoc(doc(db, 'users', requestData.nurseId));
+      const userData = userDoc.exists() ? userDoc.data() : null;
+
+      requests.push({
+        id: docSnapshot.id,
+        ...requestData,
+        nurseInfo: userData
+      });
+    }
+
+    setSoftRequests(requests);
   };
 
   const handleApproveHardRequest = async (requestId, requestData) => {
@@ -203,6 +239,22 @@ export default function AdminApprovals() {
     });
   };
 
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      pending: { text: 'รออนุมัติ', color: 'warning' },
+      approved: { text: 'อนุมัติแล้ว', color: 'success' },
+      rejected: { text: 'ไม่อนุมัติ', color: 'danger' }
+    };
+
+    const config = statusConfig[status] || statusConfig.pending;
+    
+    return (
+      <span className={`status-badge ${config.color}`}>
+        {config.text}
+      </span>
+    );
+  };
+
   const getTimeAgo = (timestamp) => {
     if (!timestamp) return '';
     const now = new Date();
@@ -216,6 +268,61 @@ export default function AdminApprovals() {
     if (diffHours > 0) return `${diffHours} ชั่วโมงที่แล้ว`;
     if (diffMinutes > 0) return `${diffMinutes} นาทีที่แล้ว`;
     return 'เมื่อสักครู่';
+  };
+
+  const getMonthName = (monthStr) => {
+    const [year, month] = monthStr.split('-');
+    const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    return `${months[parseInt(month) - 1]} ${year}`;
+  };
+
+  const getAvailableMonths = () => {
+    const months = [];
+    const currentDate = new Date();
+    
+    // แสดง 6 เดือนย้อนหลัง + เดือนปัจจุบัน + 3 เดือนข้างหน้า
+    for (let i = -6; i <= 3; i++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      months.push({
+        value: `${year}-${String(month).padStart(2, '0')}`,
+        label: getMonthName(`${year}-${String(month).padStart(2, '0')}`)
+      });
+    }
+    
+    return months;
+  };
+
+  const getRequestTypeLabel = (type, value) => {
+    const labels = {
+      'no_mondays': 'ไม่เข้าเวรวันจันทร์',
+      'no_tuesdays': 'ไม่เข้าเวรวันอังคาร',
+      'no_wednesdays': 'ไม่เข้าเวรวันพุธ',
+      'no_thursdays': 'ไม่เข้าเวรวันพฤหัสบดี',
+      'no_fridays': 'ไม่เข้าเวรวันศุกร์',
+      'no_saturdays': 'ไม่เข้าเวรวันเสาร์',
+      'no_sundays': 'ไม่เข้าเวรวันอาทิตย์',
+      'no_morning_shifts': 'ไม่เข้าเวรเช้า',
+      'no_afternoon_shifts': 'ไม่เข้าเวรบ่าย',
+      'no_night_shifts': 'ไม่เข้าเวรดึก',
+      'no_night_afternoon_double': 'ไม่เข้าเวรดึก+บ่าย',
+      'no_specific_days': `ไม่เข้าเวรวันที่ ${Array.isArray(value) ? value.join(', ') : value}`,
+      'request_specific_shifts_on_days': 'ขอเวรที่ต้องการ'
+    };
+    
+    return labels[type] || type;
+  };
+
+  const getShiftTypeLabel = (shiftCode) => {
+    const labels = {
+      [SHIFT_CODES.M_REQUEST]: 'เวรเช้า',
+      [SHIFT_CODES.A_REQUEST]: 'เวรบ่าย',
+      [SHIFT_CODES.N_REQUEST]: 'เวรดึก',
+      [SHIFT_CODES.NA_DOUBLE_REQUEST]: 'เวรดึก+บ่าย'
+    };
+    return labels[shiftCode] || '';
   };
 
   return (
@@ -236,13 +343,19 @@ export default function AdminApprovals() {
               className={`tab ${activeTab === 'hard' ? 'active' : ''}`}
               onClick={() => setActiveTab('hard')}
             >
-              Hard Request ({hardRequests.length})
+              ขอหยุดล่วงหน้า ({hardRequests.length})
             </button>
             <button
               className={`tab ${activeTab === 'swap' ? 'active' : ''}`}
               onClick={() => setActiveTab('swap')}
             >
               แลกเวร ({swapRequests.length})
+            </button>
+            <button
+              className={`tab ${activeTab === 'soft' ? 'active' : ''}`}
+              onClick={() => setActiveTab('soft')}
+            >
+              คำขอรายเดือน
             </button>
           </div>
 
@@ -256,7 +369,7 @@ export default function AdminApprovals() {
                 <div className="requests-section">
                   {hardRequests.length === 0 ? (
                     <div className="empty-state">
-                      <p>ไม่มี Hard Request ที่รอการอนุมัติ</p>
+                      <p>ไม่มีคำขอหยุดล่วงหน้าที่รอการอนุมัติ</p>
                     </div>
                   ) : (
                     <div className="requests-list">
@@ -396,6 +509,86 @@ export default function AdminApprovals() {
                             >
                               ปฏิเสธ
                             </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'soft' && (
+                <div className="requests-section">
+                  <div className="month-selector-container">
+                    <label>เลือกเดือน:</label>
+                    <select
+                      className="month-selector"
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(e.target.value)}
+                    >
+                      {getAvailableMonths().map(month => (
+                        <option key={month.value} value={month.value}>
+                          {month.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {softRequests.length === 0 ? (
+                    <div className="empty-state">
+                      <p>ไม่มีคำขอรายเดือนสำหรับ {getMonthName(selectedMonth)}</p>
+                    </div>
+                  ) : (
+                    <div className="soft-requests-list">
+                      {softRequests.map(request => (
+                        <div key={request.id} className="soft-request-card card">
+                          <div className="soft-request-header">
+                            <div className="requester-info">
+                              <div className="requester-avatar">
+                                {request.nurseInfo?.firstName?.[0] || 'N'}
+                              </div>
+                              <div>
+                                <h3>
+                                  {request.nurseInfo?.prefix}{request.nurseInfo?.firstName} {request.nurseInfo?.lastName}
+                                </h3>
+                                <p className="requester-detail">
+                                  {request.nurseInfo?.position} - วอร์ด{request.nurseInfo?.ward}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="request-count">
+                              {request.requests?.length || 0} คำขอ
+                            </div>
+                          </div>
+
+                          <div className="soft-requests-content">
+                            {request.requests?.map((req, idx) => (
+                              <div key={idx} className="soft-request-item">
+                                <div className="request-type">
+                                  <span className="request-number">คำขอที่ {idx + 1}</span>
+                                  {req.is_high_priority && (
+                                    <span className="priority-badge">สำคัญมาก</span>
+                                  )}
+                                </div>
+                                
+                                {req.type === 'request_specific_shifts_on_days' && req.value ? (
+                                  <div className="specific-shifts">
+                                    <p className="request-label">{getRequestTypeLabel(req.type, req.value)}</p>
+                                    <div className="shift-requests">
+                                      {req.value.map((shift, shiftIdx) => (
+                                        <span key={shiftIdx} className="shift-request-item">
+                                          วันที่ {shift.day} - {getShiftTypeLabel(shift.shift_type)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="request-label">
+                                    {getRequestTypeLabel(req.type, req.value)}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
                           </div>
                         </div>
                       ))}
@@ -712,6 +905,128 @@ export default function AdminApprovals() {
             flex: 1;
           }
 
+          .month-selector-container {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f7fafc;
+            border-radius: 8px;
+          }
+
+          .month-selector-container label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #4a5568;
+          }
+
+          .month-selector {
+            padding: 10px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+          }
+
+          .month-selector:focus {
+            outline: none;
+            border-color: #667eea;
+          }
+
+          .soft-requests-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+          }
+
+          .soft-request-card {
+            padding: 24px;
+          }
+
+          .soft-request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e2e8f0;
+          }
+
+          .request-count {
+            background: #ebf4ff;
+            color: #3182ce;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+          }
+
+          .soft-requests-content {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+          }
+
+          .soft-request-item {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 16px;
+          }
+
+          .request-type {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+          }
+
+          .request-number {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a5568;
+          }
+
+          .priority-badge {
+            background: #fef3c7;
+            color: #d97706;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+          }
+
+          .request-label {
+            font-size: 14px;
+            color: #2d3748;
+            margin: 0;
+          }
+
+          .specific-shifts {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+          }
+
+          .shift-requests {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+          }
+
+          .shift-request-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #4a5568;
+          }
+
           @media (max-width: 768px) {
             .swap-parties {
               flex-direction: column;
@@ -728,6 +1043,15 @@ export default function AdminApprovals() {
 
             .request-actions {
               flex-direction: column;
+            }
+
+            .month-selector-container {
+              flex-direction: column;
+              align-items: stretch;
+            }
+
+            .month-selector {
+              width: 100%;
             }
           }
         `}</style>

@@ -206,7 +206,7 @@ export default function Dashboard() {
         
         <div className="dashboard-container">
           <div className="dashboard-header">
-            <h1>สวัสดี, {userData?.prefix}{userData?.firstName}</h1>
+            <h1>สวัสดี คุณ{userData?.firstName}</h1>
             <p className="subtitle">วันนี้ {new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
           </div>
 

@@ -154,11 +154,20 @@ export default function CreateSchedule() {
         day,
         date: date.toISOString().split('T')[0],
         weekday: date.getDay(),
-        isWeekend: date.getDay() === 0 || date.getDay() === 6
+        isWeekend: date.getDay() === 0 || date.getDay() === 6,
+        weekdayName: ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'][date.getDay()]
       });
     }
     
     return days;
+  };
+
+  const toggleHoliday = (day) => {
+    if (holidays.includes(day)) {
+      setHolidays(holidays.filter(d => d !== day));
+    } else {
+      setHolidays([...holidays, day]);
+    }
   };
 
   const handleGenerateSchedule = async () => {
@@ -485,24 +494,53 @@ export default function CreateSchedule() {
 
                 <h3>วันหยุดราชการ</h3>
                 <div className="holidays-section">
-                  <p className="hint">เลือกวันที่เป็นวันหยุดราชการในเดือนนี้</p>
-                  <div className="days-grid">
+                  <p className="hint">เลือกวันที่เป็นวันหยุดราชการในเดือนนี้ (นอกเหนือจากเสาร์-อาทิตย์)</p>
+                  <div className="calendar-grid">
                     {getMonthDays().map(day => (
-                      <label key={day.day} className={`day-checkbox ${day.isWeekend ? 'weekend' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={holidays.includes(day.day)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setHolidays([...holidays, day.day]);
-                            } else {
-                              setHolidays(holidays.filter(d => d !== day.day));
-                            }
-                          }}
-                        />
-                        <span>{day.day}</span>
-                      </label>
+                      <div 
+                        key={day.day} 
+                        className={`calendar-day ${day.isWeekend ? 'weekend' : ''} ${holidays.includes(day.day) ? 'selected' : ''}`}
+                        onClick={() => toggleHoliday(day.day)}
+                      >
+                        <div className="day-header">
+                          <span className="weekday-name">{day.weekdayName}</span>
+                        </div>
+                        <div className="day-number">{day.day}</div>
+                        {holidays.includes(day.day) && (
+                          <div className="holiday-badge">
+                            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
                     ))}
+                  </div>
+                  <div className="selected-holidays">
+                    {holidays.length > 0 && (
+                      <>
+                        <p className="selected-label">วันหยุดที่เลือก: {holidays.length} วัน</p>
+                        <div className="holiday-tags">
+                          {holidays.sort((a, b) => a - b).map(day => {
+                            const dayInfo = getMonthDays().find(d => d.day === day);
+                            return (
+                              <span key={day} className="holiday-tag">
+                                {dayInfo.weekdayName} ที่ {day}
+                                <button 
+                                  className="remove-tag"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleHoliday(day);
+                                  }}
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -511,7 +549,7 @@ export default function CreateSchedule() {
                 <h2>สรุปข้อมูลก่อนสร้างตารางเวร</h2>
                 <div className="summary-grid">
                   <div className="summary-item">
-                    <span className="label">จำนวนพยาบาลทั้งหมด</span>
+                    <span className="label">จำนวนพยาบาล</span>
                     <span className="value">{nurses.length} คน</span>
                   </div>
                   <div className="summary-item">
@@ -523,15 +561,15 @@ export default function CreateSchedule() {
                     <span className="value">{nurses.filter(n => !n.isGovernmentOfficial).length} คน</span>
                   </div>
                   <div className="summary-item">
-                    <span className="label">Soft Request</span>
+                    <span className="label">คำขอรายเดือน</span>
                     <span className="value">{Object.keys(softRequests).length} คน</span>
                   </div>
                   <div className="summary-item">
-                    <span className="label">Hard Request</span>
+                    <span className="label">ขอหยุดล่วงหน้า</span>
                     <span className="value">{hardRequests.length} รายการ</span>
                   </div>
                   <div className="summary-item">
-                    <span className="label">Carry Over</span>
+                    <span className="label">สิทธิพิเศษ</span>
                     <span className="value">{Object.values(carryOverFlags).filter(v => v).length} คน</span>
                   </div>
                 </div>
@@ -557,34 +595,34 @@ export default function CreateSchedule() {
             max-width: 1400px;
             margin: 0 auto;
           }
-
+                
           .page-header {
             margin-bottom: 30px;
           }
-
+                
           .page-header h1 {
             font-size: 28px;
             font-weight: 700;
             color: #2d3748;
             margin-bottom: 8px;
           }
-
+                
           .subtitle {
             font-size: 16px;
             color: #718096;
           }
-
+                
           .form-section {
             margin-bottom: 24px;
           }
-
+                
           .form-section h2 {
             font-size: 20px;
             font-weight: 600;
             color: #2d3748;
             margin-bottom: 24px;
           }
-
+                
           .form-section h3 {
             font-size: 16px;
             font-weight: 600;
@@ -592,78 +630,172 @@ export default function CreateSchedule() {
             margin-top: 32px;
             margin-bottom: 16px;
           }
-
+                
           .form-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
           }
-
+                
           .form-grid.three-columns {
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
           }
-
+                
           .holidays-section {
             margin-top: 16px;
           }
-
+                
           .hint {
             font-size: 14px;
             color: #718096;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
           }
-
-          .days-grid {
+                
+          .calendar-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin-bottom: 24px;
+          }
+                
+          .calendar-day {
+            aspect-ratio: 1;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            background: white;
+            min-height: 60px;
+          }
+                
+          .calendar-day:hover {
+            border-color: #cbd5e0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          }
+                
+          .calendar-day.weekend {
+            background: #fef2f2;
+            border-color: #fecaca;
+          }
+                
+          .calendar-day.selected {
+            background: #dbeafe;
+            border-color: #3b82f6;
+          }
+                
+          .calendar-day.weekend.selected {
+            background: #ddd6fe;
+            border-color: #8b5cf6;
+          }
+                
+          .day-header {
+            position: absolute;
+            top: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #6b7280;
+          }
+                
+          .calendar-day.weekend .day-header {
+            color: #dc2626;
+          }
+                
+          .calendar-day.selected .day-header {
+            color: #2563eb;
+          }
+                
+          .day-number {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+          }
+                
+          .calendar-day.selected .day-number {
+            color: #1d4ed8;
+          }
+                
+          .holiday-badge {
+            position: absolute;
+            bottom: 4px;
+            color: #10b981;
+          }
+                
+          .selected-holidays {
+            background: #f3f4f6;
+            border-radius: 12px;
+            padding: 16px;
+          }
+                
+          .selected-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #4b5563;
+            margin-bottom: 12px;
+          }
+                
+          .holiday-tags {
+            display: flex;
+            flex-wrap: wrap;
             gap: 8px;
           }
-
-          .day-checkbox {
+                
+          .holiday-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #374151;
+          }
+                
+          .remove-tag {
+            background: none;
+            border: none;
+            color: #6b7280;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background: #f7fafc;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
           }
-
-          .day-checkbox:hover {
-            background: #e2e8f0;
+                
+          .remove-tag:hover {
+            background: #f3f4f6;
+            color: #dc2626;
           }
-
-          .day-checkbox.weekend {
-            background: #fff5f5;
-          }
-
-          .day-checkbox.weekend:hover {
-            background: #fed7d7;
-          }
-
-          .day-checkbox input[type="checkbox"] {
-            cursor: pointer;
-          }
-
+                
           .summary-section {
             background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
           }
-
+                
           .summary-section h2 {
             font-size: 20px;
             font-weight: 600;
             color: #2d3748;
             margin-bottom: 24px;
           }
-
+                
           .summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 20px;
             margin-bottom: 32px;
           }
-
+                
           .summary-item {
             display: flex;
             justify-content: space-between;
@@ -672,33 +804,37 @@ export default function CreateSchedule() {
             background: white;
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            gap: 12px;
           }
-
+                
           .summary-item .label {
             font-size: 14px;
             color: #718096;
+            flex: 1;
+            min-width: 0;
           }
-
+                
           .summary-item .value {
             font-size: 18px;
             font-weight: 600;
             color: #2d3748;
+            white-space: nowrap;
           }
-
+                
           .action-buttons {
             display: flex;
             justify-content: center;
           }
-
+                
           .btn.large {
             padding: 16px 40px;
             font-size: 16px;
           }
-
+                
           .schedule-preview {
             animation: fadeIn 0.5s ease-out;
           }
-
+                
           @keyframes fadeIn {
             from {
               opacity: 0;
@@ -709,45 +845,45 @@ export default function CreateSchedule() {
               transform: translateY(0);
             }
           }
-
+                
           .preview-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 24px;
           }
-
+                
           .preview-header h2 {
             font-size: 24px;
             font-weight: 600;
             color: #2d3748;
           }
-
+                
           .preview-actions {
             display: flex;
             gap: 12px;
           }
-
+                
           .fairness-report {
             background: #f7fafc;
             border-radius: 12px;
             padding: 24px;
             margin-bottom: 24px;
           }
-
+                
           .fairness-report h3 {
             font-size: 18px;
             font-weight: 600;
             color: #2d3748;
             margin-bottom: 16px;
           }
-
+                
           .fairness-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 16px;
           }
-
+                
           .fairness-item {
             display: flex;
             justify-content: space-between;
@@ -757,29 +893,29 @@ export default function CreateSchedule() {
             border-radius: 8px;
             font-size: 14px;
           }
-
+                
           .fairness-item span:first-child {
             color: #718096;
           }
-
+                
           .fairness-item span:last-child {
             font-weight: 600;
             color: #2d3748;
           }
-
+                
           .schedule-table-container {
             overflow-x: auto;
             background: white;
             border-radius: 12px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
           }
-
+                
           .schedule-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
           }
-
+                
           .schedule-table th {
             background: #f7fafc;
             padding: 12px 8px;
@@ -791,18 +927,18 @@ export default function CreateSchedule() {
             top: 0;
             z-index: 10;
           }
-
+                
           .schedule-table th.weekend {
             background: #fed7d7;
             color: #c53030;
           }
-
+                
           .schedule-table td {
             padding: 8px;
             text-align: center;
             border-bottom: 1px solid #e2e8f0;
           }
-
+                
           .schedule-table td.nurse-name {
             text-align: left;
             font-weight: 500;
@@ -811,35 +947,47 @@ export default function CreateSchedule() {
             background: white;
             z-index: 5;
           }
-
+                
           .schedule-table td.weekend {
             background: #fff5f5;
           }
-
+                
           .schedule-table td.total {
             font-weight: 600;
             background: #f7fafc;
           }
-
+                
           .schedule-table .off {
             color: #cbd5e0;
           }
-
+                
           @media (max-width: 768px) {
             .preview-header {
               flex-direction: column;
               gap: 16px;
               align-items: stretch;
             }
-
+                
             .preview-actions {
               flex-direction: column;
             }
-
+                
+            .calendar-grid {
+              grid-template-columns: repeat(4, 1fr);
+            }
+                
+            .calendar-day {
+              min-height: 50px;
+            }
+                
+            .day-number {
+              font-size: 16px;
+            }
+                
             .schedule-table {
               font-size: 11px;
             }
-
+                
             .schedule-table th,
             .schedule-table td {
               padding: 4px;

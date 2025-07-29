@@ -19,8 +19,8 @@ export default function Layout({ children }) {
       label: 'คำขอ', 
       icon: '📝',
       submenu: [
-        { path: '/requests/soft', label: 'Soft Request' },
-        { path: '/requests/hard', label: 'Hard Request' },
+        { path: '/requests/soft', label: 'คำขอรายเดือน' },
+        { path: '/requests/hard', label: 'ขอหยุดล่วงหน้า' },
         { path: '/requests/swap', label: 'แลกเวร' }
       ]
     }
@@ -58,14 +58,12 @@ export default function Layout({ children }) {
               <span></span>
             </button>
             
-            <Link href="/dashboard">
-              <a className="logo">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                  <path d="M19 8H17V3H7V8H5C3.9 8 3 8.9 3 10V20C3 21.1 3.9 22 5 22H19C20.1 22 21 21.1 21 20V10C21 8.9 20.1 8 19 8ZM9 5H15V8H9V5ZM19 20H5V10H19V20Z" fill="currentColor"/>
-                  <path d="M11 13H8V16H11V19H13V16H16V13H13V10H11V13Z" fill="currentColor"/>
-                </svg>
-                <span>ระบบจัดเวรพยาบาล</span>
-              </a>
+            <Link href="/dashboard" className="logo">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path d="M19 8H17V3H7V8H5C3.9 8 3 8.9 3 10V20C3 21.1 3.9 22 5 22H19C20.1 22 21 21.1 21 20V10C21 8.9 20.1 8 19 8ZM9 5H15V8H9V5ZM19 20H5V10H19V20Z" fill="currentColor"/>
+                <path d="M11 13H8V16H11V19H13V16H16V13H13V10H11V13Z" fill="currentColor"/>
+              </svg>
+              <span>ระบบจัดเวรพยาบาล</span>
             </Link>
           </div>
 
@@ -76,6 +74,7 @@ export default function Layout({ children }) {
                   {item.submenu ? (
                     <div className="dropdown">
                       <button className={`nav-item ${isActive(item.path) ? 'active' : ''}`}>
+                        <span className="nav-icon">{item.icon}</span>
                         {item.label}
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                           <path d="M3 4.5L6 7.5L9 4.5H3Z"/>
@@ -83,19 +82,23 @@ export default function Layout({ children }) {
                       </button>
                       <div className="dropdown-menu">
                         {item.submenu.map((sub) => (
-                          <Link key={sub.path} href={sub.path}>
-                            <a className={isActive(sub.path) ? 'active' : ''}>
-                              {sub.label}
-                            </a>
+                          <Link 
+                            key={sub.path} 
+                            href={sub.path}
+                            className={`dropdown-item ${isActive(sub.path) ? 'active' : ''}`}
+                          >
+                            <span className="dropdown-item-text">{sub.label}</span>
                           </Link>
                         ))}
                       </div>
                     </div>
                   ) : (
-                    <Link href={item.path}>
-                      <a className={`nav-item ${isActive(item.path) ? 'active' : ''}`}>
-                        {item.label}
-                      </a>
+                    <Link 
+                      href={item.path}
+                      className={`nav-item ${isActive(item.path) ? 'active' : ''}`}
+                    >
+                      <span className="nav-icon">{item.icon}</span>
+                      {item.label}
                     </Link>
                   )}
                 </div>
@@ -105,17 +108,21 @@ export default function Layout({ children }) {
                 <div className="admin-divider">
                   <div className="dropdown">
                     <button className={`nav-item admin-menu ${router.pathname.includes('/admin') || router.pathname.includes('/schedule/create') ? 'active' : ''}`}>
+                      <span className="nav-icon">⚙️</span>
                       Admin
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                         <path d="M3 4.5L6 7.5L9 4.5H3Z"/>
                       </svg>
                     </button>
-                    <div className="dropdown-menu">
+                    <div className="dropdown-menu admin-dropdown">
                       {adminMenuItems.map((item) => (
-                        <Link key={item.path} href={item.path}>
-                          <a className={isActive(item.path) ? 'active' : ''}>
-                            {item.label}
-                          </a>
+                        <Link 
+                          key={item.path} 
+                          href={item.path}
+                          className={`dropdown-item ${isActive(item.path) ? 'active' : ''}`}
+                        >
+                          <span className="dropdown-icon">{item.icon}</span>
+                          <span className="dropdown-item-text">{item.label}</span>
                         </Link>
                       ))}
                     </div>
@@ -128,7 +135,11 @@ export default function Layout({ children }) {
           <div className="nav-right">
             <div className="user-info" onClick={() => setShowUserMenu(!showUserMenu)}>
               <div className="user-avatar">
-                {userData?.firstName?.[0] || 'U'}
+                {userData?.profileImage ? (
+                  <img src={userData.profileImage} alt={userData.firstName} />
+                ) : (
+                  <span>{userData?.firstName?.[0] || 'U'}</span>
+                )}
               </div>
               <span className="user-name">
                 {userData?.firstName} {userData?.lastName}
@@ -145,8 +156,8 @@ export default function Layout({ children }) {
                   {isAdmin && <div className="admin-badge">Admin</div>}
                 </div>
                 <div className="dropdown-divider"></div>
-                <Link href="/dashboard">
-                  <a>โปรไฟล์ของฉัน</a>
+                <Link href="/dashboard" className="user-dropdown-link">
+                  โปรไฟล์ของฉัน
                 </Link>
                 <button onClick={handleLogout} className="logout-btn">
                   ออกจากระบบ
@@ -166,24 +177,23 @@ export default function Layout({ children }) {
                   <>
                     <div className="mobile-menu-header">{item.label}</div>
                     {item.submenu.map((sub) => (
-                      <Link key={sub.path} href={sub.path}>
-                        <a 
-                          className={`mobile-menu-item ${isActive(sub.path) ? 'active' : ''}`}
-                          onClick={() => setShowMobileMenu(false)}
-                        >
-                          {sub.label}
-                        </a>
+                      <Link 
+                        key={sub.path} 
+                        href={sub.path}
+                        className={`mobile-menu-item ${isActive(sub.path) ? 'active' : ''}`}
+                        onClick={() => setShowMobileMenu(false)}
+                      >
+                        {sub.label}
                       </Link>
                     ))}
                   </>
                 ) : (
-                  <Link href={item.path}>
-                    <a 
-                      className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
-                      onClick={() => setShowMobileMenu(false)}
-                    >
-                      {item.label}
-                    </a>
+                  <Link 
+                    href={item.path}
+                    className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    {item.label}
                   </Link>
                 )}
               </div>
@@ -194,13 +204,13 @@ export default function Layout({ children }) {
                 <div className="mobile-menu-divider"></div>
                 <div className="mobile-menu-header">Admin</div>
                 {adminMenuItems.map((item) => (
-                  <Link key={item.path} href={item.path}>
-                    <a 
-                      className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
-                      onClick={() => setShowMobileMenu(false)}
-                    >
-                      {item.label}
-                    </a>
+                  <Link 
+                    key={item.path} 
+                    href={item.path}
+                    className={`mobile-menu-item ${isActive(item.path) ? 'active' : ''}`}
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    {item.label}
                   </Link>
                 ))}
               </>
@@ -262,19 +272,6 @@ export default function Layout({ children }) {
           transition: 0.3s;
         }
 
-        .logo {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-weight: 600;
-          font-size: 18px;
-          color: #2d3748;
-        }
-
-        .logo svg {
-          color: #667eea;
-        }
-
         .nav-center {
           flex: 1;
           display: flex;
@@ -291,29 +288,9 @@ export default function Layout({ children }) {
           position: relative;
         }
 
-        .nav-item {
-          padding: 8px 16px;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 500;
-          color: #4a5568;
-          transition: all 0.3s ease;
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          background: none;
-          border: none;
-          cursor: pointer;
-        }
-
-        .nav-item:hover {
-          color: #667eea;
-          background: #f7fafc;
-        }
-
-        .nav-item.active {
-          color: #667eea;
-          background: #ebf4ff;
+        .nav-icon {
+          font-size: 16px;
+          opacity: 0.8;
         }
 
         .admin-divider {
@@ -339,15 +316,20 @@ export default function Layout({ children }) {
           top: 100%;
           left: 0;
           background: white;
-          border-radius: 8px;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+          border-radius: 12px;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
           padding: 8px;
-          min-width: 180px;
+          min-width: 200px;
           margin-top: 8px;
           opacity: 0;
           visibility: hidden;
           transform: translateY(-10px);
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
+          border: 1px solid #e2e8f0;
+        }
+
+        .admin-dropdown {
+          min-width: 240px;
         }
 
         .dropdown:hover .dropdown-menu {
@@ -356,23 +338,13 @@ export default function Layout({ children }) {
           transform: translateY(0);
         }
 
-        .dropdown-menu a {
-          display: block;
-          padding: 10px 16px;
-          border-radius: 6px;
-          font-size: 14px;
-          color: #4a5568;
-          transition: all 0.3s ease;
+        .dropdown-icon {
+          font-size: 18px;
+          opacity: 0.8;
         }
 
-        .dropdown-menu a:hover {
-          background: #f7fafc;
-          color: #667eea;
-        }
-
-        .dropdown-menu a.active {
-          background: #ebf4ff;
-          color: #667eea;
+        .dropdown-item-text {
+          flex: 1;
         }
 
         .nav-right {
@@ -404,6 +376,21 @@ export default function Layout({ children }) {
           justify-content: center;
           font-weight: 600;
           font-size: 14px;
+          overflow: hidden;
+        }
+
+        .user-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .user-avatar span {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
         }
 
         .user-name {
@@ -466,20 +453,6 @@ export default function Layout({ children }) {
           margin: 12px -16px;
         }
 
-        .user-dropdown a {
-          display: block;
-          padding: 10px 12px;
-          border-radius: 8px;
-          font-size: 14px;
-          color: #4a5568;
-          transition: all 0.3s ease;
-        }
-
-        .user-dropdown a:hover {
-          background: #f7fafc;
-          color: #667eea;
-        }
-
         .logout-btn {
           width: 100%;
           text-align: left;
@@ -531,26 +504,6 @@ export default function Layout({ children }) {
           margin: 16px 0 8px;
         }
 
-        .mobile-menu-item {
-          display: block;
-          padding: 12px 16px;
-          border-radius: 8px;
-          font-size: 14px;
-          color: #4a5568;
-          transition: all 0.3s ease;
-          margin-bottom: 4px;
-        }
-
-        .mobile-menu-item:hover {
-          background: #f7fafc;
-          color: #667eea;
-        }
-
-        .mobile-menu-item.active {
-          background: #ebf4ff;
-          color: #667eea;
-        }
-
         .mobile-menu-divider {
           height: 1px;
           background: #e2e8f0;
@@ -587,6 +540,122 @@ export default function Layout({ children }) {
           .user-name {
             display: none;
           }
+        }
+      `}</style>
+
+      <style jsx global>{`
+        .logo {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-weight: 600;
+          font-size: 18px;
+          color: #2d3748;
+          text-decoration: none;
+        }
+
+        .logo svg {
+          color: #667eea;
+        }
+
+        .nav-item {
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          color: #4a5568;
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          text-decoration: none;
+        }
+
+        .nav-item:hover {
+          color: #667eea;
+          background: #f7fafc;
+        }
+
+        .nav-item.active {
+          color: #667eea;
+          background: #ebf4ff;
+        }
+
+        .dropdown-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 16px;
+          border-radius: 8px;
+          font-size: 14px;
+          color: #4a5568;
+          transition: all 0.2s ease;
+          position: relative;
+          overflow: hidden;
+          text-decoration: none;
+        }
+
+        .dropdown-item:hover {
+          background: #f7fafc;
+          color: #667eea;
+          transform: translateX(4px);
+        }
+
+        .dropdown-item.active {
+          background: #ebf4ff;
+          color: #667eea;
+          font-weight: 500;
+        }
+
+        .dropdown-item.active::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 3px;
+          height: 16px;
+          background: #667eea;
+          border-radius: 0 2px 2px 0;
+        }
+
+        .user-dropdown-link {
+          display: block;
+          padding: 10px 12px;
+          border-radius: 8px;
+          font-size: 14px;
+          color: #4a5568;
+          transition: all 0.3s ease;
+          text-decoration: none;
+        }
+
+        .user-dropdown-link:hover {
+          background: #f7fafc;
+          color: #667eea;
+        }
+
+        .mobile-menu-item {
+          display: block;
+          padding: 12px 16px;
+          border-radius: 8px;
+          font-size: 14px;
+          color: #4a5568;
+          transition: all 0.3s ease;
+          margin-bottom: 4px;
+          text-decoration: none;
+        }
+
+        .mobile-menu-item:hover {
+          background: #f7fafc;
+          color: #667eea;
+        }
+
+        .mobile-menu-item.active {
+          background: #ebf4ff;
+          color: #667eea;
         }
       `}</style>
     </div>
