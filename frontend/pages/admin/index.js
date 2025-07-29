@@ -8,6 +8,7 @@ import Head from 'next/head';
 export default function AdminDashboard() {
   const { userData } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [selectedWardFilter, setSelectedWardFilter] = useState('all');
   const [stats, setStats] = useState({
     totalNurses: 0,
     nursesByWard: {},
@@ -23,7 +24,7 @@ export default function AdminDashboard() {
     if (userData) {
       loadDashboardData();
     }
-  }, [userData]);
+  }, [userData, selectedWardFilter]);
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -85,9 +86,22 @@ export default function AdminDashboard() {
   };
 
   const loadPendingRequests = async () => {
+    // Hard requests และ swap requests เฉพาะวอร์ดตัวเอง
+    const hardRequestsQuery = query(
+      collection(db, 'hardRequests'),
+      where('status', '==', 'pending'),
+      where('ward', '==', userData.ward)
+    );
+    
+    const swapRequestsQuery = query(
+      collection(db, 'swapRequests'),
+      where('status', '==', 'accepted'),
+      where('ward', '==', userData.ward)
+    );
+
     const [hardRequests, swapRequests] = await Promise.all([
-      getDocs(query(collection(db, 'hardRequests'), where('status', '==', 'pending'))),
-      getDocs(query(collection(db, 'swapRequests'), where('status', '==', 'accepted')))
+      getDocs(hardRequestsQuery),
+      getDocs(swapRequestsQuery)
     ]);
 
     setStats(prev => ({
@@ -138,9 +152,23 @@ export default function AdminDashboard() {
   const loadRecentActivities = async () => {
     const activities = [];
 
-    const recentSchedules = await getDocs(
-      query(collection(db, 'schedules'), orderBy('createdAt', 'desc'), limit(5))
+    // Query สำหรับกิจกรรมล่าสุด
+    let schedulesQuery = query(
+      collection(db, 'schedules'),
+      orderBy('createdAt', 'desc'),
+      limit(10)
     );
+
+    if (selectedWardFilter !== 'all') {
+      schedulesQuery = query(
+        collection(db, 'schedules'),
+        where('ward', '==', selectedWardFilter),
+        orderBy('createdAt', 'desc'),
+        limit(10)
+      );
+    }
+
+    const recentSchedules = await getDocs(schedulesQuery);
 
     recentSchedules.forEach((doc) => {
       const data = doc.data();
@@ -154,9 +182,23 @@ export default function AdminDashboard() {
       });
     });
 
-    const recentHardRequests = await getDocs(
-      query(collection(db, 'hardRequests'), orderBy('createdAt', 'desc'), limit(5))
+    // Hard requests query
+    let hardRequestsQuery = query(
+      collection(db, 'hardRequests'),
+      orderBy('createdAt', 'desc'),
+      limit(10)
     );
+
+    if (selectedWardFilter !== 'all') {
+      hardRequestsQuery = query(
+        collection(db, 'hardRequests'),
+        where('ward', '==', selectedWardFilter),
+        orderBy('createdAt', 'desc'),
+        limit(10)
+      );
+    }
+
+    const recentHardRequests = await getDocs(hardRequestsQuery);
 
     recentHardRequests.forEach((doc) => {
       const data = doc.data();
@@ -165,7 +207,8 @@ export default function AdminDashboard() {
         nurseId: data.nurseId,
         date: data.date,
         status: data.status,
-        createdAt: data.createdAt
+        createdAt: data.createdAt,
+        ward: data.ward
       });
     });
 
@@ -219,22 +262,25 @@ export default function AdminDashboard() {
                   <div className="stat-content">
                     <h3>จำนวนพยาบาลทั้งหมด</h3>
                     <p className="stat-number">{stats.totalNurses}</p>
+                    <p className="stat-label">ทุกวอร์ด</p>
                   </div>
                 </div>
 
                 <div className="stat-card warning">
                   <div className="stat-icon">📝</div>
                   <div className="stat-content">
-                    <h3>Hard Request รออนุมัติ</h3>
+                    <h3>ขอหยุดล่วงหน้า รออนุมัติ</h3>
                     <p className="stat-number">{stats.pendingRequests.hard}</p>
+                    <p className="stat-label">วอร์ด{userData.ward}</p>
                   </div>
                 </div>
 
                 <div className="stat-card info">
                   <div className="stat-icon">🔄</div>
                   <div className="stat-content">
-                    <h3>แลกเวรรออนุมัติ</h3>
+                    <h3>แลกเวร รออนุมัติ</h3>
                     <p className="stat-number">{stats.pendingRequests.swap}</p>
+                    <p className="stat-label">วอร์ด{userData.ward}</p>
                   </div>
                 </div>
 
@@ -243,6 +289,7 @@ export default function AdminDashboard() {
                   <div className="stat-content">
                     <h3>ตารางเวรที่สร้างแล้ว</h3>
                     <p className="stat-number">{Object.keys(stats.monthlySchedules).length}</p>
+                    <p className="stat-label">ทุกวอร์ด</p>
                   </div>
                 </div>
               </div>
@@ -319,7 +366,19 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="dashboard-section card full-width">
-                  <h2>กิจกรรมล่าสุด</h2>
+                  <div className="section-header">
+                    <h2>กิจกรรมล่าสุด</h2>
+                    <select
+                      className="ward-filter"
+                      value={selectedWardFilter}
+                      onChange={(e) => setSelectedWardFilter(e.target.value)}
+                    >
+                      <option value="all">ทุกวอร์ด</option>
+                      {WARDS.map(ward => (
+                        <option key={ward.id} value={ward.name}>{ward.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="activities-list">
                     {stats.recentActivities.map((activity, idx) => (
                       <div key={idx} className="activity-item">
@@ -333,7 +392,7 @@ export default function AdminDashboard() {
                             </p>
                           ) : (
                             <p>
-                              Hard Request วันที่ {new Date(activity.date).toLocaleDateString('th-TH')} 
+                              Hard Request วอร์ด{activity.ward} วันที่ {new Date(activity.date).toLocaleDateString('th-TH')} 
                               <span className={`status ${activity.status}`}> ({activity.status})</span>
                             </p>
                           )}
@@ -437,6 +496,12 @@ export default function AdminDashboard() {
           .stat-number {
             font-size: 32px;
             font-weight: 700;
+            margin-bottom: 4px;
+          }
+
+          .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
           }
 
           .dashboard-grid {
@@ -454,6 +519,34 @@ export default function AdminDashboard() {
 
           .dashboard-section.full-width {
             grid-column: span 2;
+          }
+
+          .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+          }
+
+          .section-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+          }
+
+          .ward-filter {
+            padding: 8px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+          }
+
+          .ward-filter:focus {
+            outline: none;
+            border-color: #667eea;
           }
 
           .dashboard-section h2 {
@@ -675,6 +768,16 @@ export default function AdminDashboard() {
             .type-stats {
               grid-template-columns: 1fr;
               gap: 16px;
+            }
+
+            .section-header {
+              flex-direction: column;
+              gap: 12px;
+              align-items: stretch;
+            }
+
+            .ward-filter {
+              width: 100%;
             }
           }
         `}</style>

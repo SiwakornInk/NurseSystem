@@ -43,7 +43,11 @@ export default function AdminApprovals() {
 
   const loadHardRequests = async () => {
     const requestsRef = collection(db, 'hardRequests');
-    const q = query(requestsRef, where('status', '==', 'pending'));
+    const q = query(
+      requestsRef, 
+      where('status', '==', 'pending'),
+      where('ward', '==', userData.ward)
+    );
     
     const querySnapshot = await getDocs(q);
     const requests = [];
@@ -52,12 +56,12 @@ export default function AdminApprovals() {
       const requestData = docSnapshot.data();
       
       const userDoc = await getDoc(doc(db, 'users', requestData.nurseId));
-      const userData = userDoc.exists() ? userDoc.data() : null;
+      const userDataTemp = userDoc.exists() ? userDoc.data() : null;
 
       requests.push({
         id: docSnapshot.id,
         ...requestData,
-        nurseInfo: userData
+        nurseInfo: userDataTemp
       });
     }
 
@@ -67,7 +71,11 @@ export default function AdminApprovals() {
 
   const loadSwapRequests = async () => {
     const requestsRef = collection(db, 'swapRequests');
-    const q = query(requestsRef, where('status', '==', 'accepted'));
+    const q = query(
+      requestsRef, 
+      where('status', '==', 'accepted'),
+      where('ward', '==', userData.ward)
+    );
     
     const querySnapshot = await getDocs(q);
     const requests = [];
@@ -97,6 +105,7 @@ export default function AdminApprovals() {
     const requestsRef = collection(db, 'softRequests');
     const q = query(
       requestsRef,
+      where('ward', '==', userData.ward),
       where('year', '==', parseInt(year)),
       where('month', '==', parseInt(month))
     );
@@ -108,12 +117,12 @@ export default function AdminApprovals() {
       const requestData = docSnapshot.data();
       
       const userDoc = await getDoc(doc(db, 'users', requestData.nurseId));
-      const userData = userDoc.exists() ? userDoc.data() : null;
+      const userDataTemp = userDoc.exists() ? userDoc.data() : null;
 
       requests.push({
         id: docSnapshot.id,
         ...requestData,
-        nurseInfo: userData
+        nurseInfo: userDataTemp
       });
     }
 
@@ -335,7 +344,7 @@ export default function AdminApprovals() {
         <div className="approvals-container">
           <div className="page-header">
             <h1>อนุมัติคำขอ</h1>
-            <p className="subtitle">จัดการคำขอที่รอการอนุมัติ</p>
+            <p className="subtitle">จัดการคำขอที่รอการอนุมัติสำหรับวอร์ด{userData?.ward}</p>
           </div>
 
           <div className="tabs">

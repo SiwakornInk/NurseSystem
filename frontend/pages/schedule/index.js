@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth, ProtectedRoute } from '../../lib/auth';
 import Layout from '../../components/Layout';
-import { db, SHIFT_TYPES } from '../../lib/firebase';
+import { db, SHIFT_TYPES, WARDS } from '../../lib/firebase';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import Head from 'next/head';
 
@@ -9,14 +9,21 @@ export default function Schedule() {
   const { userData } = useAuth();
   const [schedules, setSchedules] = useState([]);
   const [selectedSchedule, setSelectedSchedule] = useState(null);
+  const [selectedWard, setSelectedWard] = useState('');
   const [viewMode, setViewMode] = useState('month');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (userData?.ward) {
-      loadSchedules();
+    if (userData) {
+      setSelectedWard(userData.ward);
     }
   }, [userData]);
+
+  useEffect(() => {
+    if (selectedWard) {
+      loadSchedules();
+    }
+  }, [selectedWard]);
 
   const loadSchedules = async () => {
     setLoading(true);
@@ -24,7 +31,7 @@ export default function Schedule() {
       const schedulesRef = collection(db, 'schedules');
       const q = query(
         schedulesRef,
-        where('ward', '==', userData.ward),
+        where('ward', '==', selectedWard),
         orderBy('year', 'desc'),
         orderBy('month', 'desc')
       );
@@ -42,6 +49,8 @@ export default function Schedule() {
       setSchedules(schedulesData);
       if (schedulesData.length > 0) {
         setSelectedSchedule(schedulesData[0]);
+      } else {
+        setSelectedSchedule(null);
       }
     } catch (error) {
       console.error('Error loading schedules:', error);
@@ -83,7 +92,7 @@ export default function Schedule() {
     }
 
     const mySchedule = nurseSchedules?.[userData.id];
-    if (!mySchedule) return <p className="no-data">ไม่พบข้อมูลตารางเวรของคุณ</p>;
+    if (!mySchedule) return <p className="no-data">ไม่พบข้อมูลตารางเวรของคุณในวอร์ดนี้</p>;
 
     return (
       <div className="calendar-container">
@@ -134,7 +143,7 @@ export default function Schedule() {
 
     const { nurseSchedules, days } = selectedSchedule;
     const mySchedule = nurseSchedules?.[userData.id];
-    if (!mySchedule) return <p className="no-data">ไม่พบข้อมูลตารางเวรของคุณ</p>;
+    if (!mySchedule) return <p className="no-data">ไม่พบข้อมูลตารางเวรของคุณในวอร์ดนี้</p>;
 
     return (
       <div className="list-container">
@@ -177,7 +186,7 @@ export default function Schedule() {
     const myStats = shiftsCount?.[userData.id];
     const allNurses = Object.keys(nurseSchedules || {});
 
-    if (!myStats) return <p className="no-data">ไม่พบข้อมูลสถิติของคุณ</p>;
+    if (!myStats) return <p className="no-data">ไม่พบข้อมูลสถิติของคุณในวอร์ดนี้</p>;
 
     const avgStats = {
       morning: 0,
@@ -271,18 +280,33 @@ export default function Schedule() {
             <h1>ตารางเวร</h1>
             <div className="header-controls">
               <select
+                className="ward-selector"
+                value={selectedWard}
+                onChange={(e) => setSelectedWard(e.target.value)}
+              >
+                {WARDS.map(ward => (
+                  <option key={ward.id} value={ward.name}>{ward.name}</option>
+                ))}
+              </select>
+
+              <select
                 className="month-selector"
                 value={selectedSchedule?.id || ''}
                 onChange={(e) => {
                   const schedule = schedules.find(s => s.id === e.target.value);
                   setSelectedSchedule(schedule);
                 }}
+                disabled={schedules.length === 0}
               >
-                {schedules.map(schedule => (
-                  <option key={schedule.id} value={schedule.id}>
-                    {getMonthName(schedule.month)} {schedule.year}
-                  </option>
-                ))}
+                {schedules.length === 0 ? (
+                  <option value="">ไม่มีตารางเวร</option>
+                ) : (
+                  schedules.map(schedule => (
+                    <option key={schedule.id} value={schedule.id}>
+                      {getMonthName(schedule.month)} {schedule.year}
+                    </option>
+                  ))
+                )}
               </select>
 
               <div className="view-toggle">
@@ -314,7 +338,7 @@ export default function Schedule() {
             </div>
           ) : schedules.length === 0 ? (
             <div className="empty-state">
-              <p>ยังไม่มีตารางเวรสำหรับวอร์ด{userData?.ward}</p>
+              <p>ยังไม่มีตารางเวรสำหรับวอร์ด{selectedWard}</p>
             </div>
           ) : (
             <div className="schedule-content">
@@ -353,6 +377,7 @@ export default function Schedule() {
             flex-wrap: wrap;
           }
 
+          .ward-selector,
           .month-selector {
             padding: 10px 16px;
             border: 2px solid #e2e8f0;
@@ -364,7 +389,14 @@ export default function Schedule() {
             transition: all 0.3s ease;
           }
 
+          .ward-selector:hover,
           .month-selector:hover {
+            border-color: #667eea;
+          }
+
+          .ward-selector:focus,
+          .month-selector:focus {
+            outline: none;
             border-color: #667eea;
           }
 
@@ -685,6 +717,7 @@ export default function Schedule() {
               width: 100%;
             }
 
+            .ward-selector,
             .month-selector {
               width: 100%;
             }
