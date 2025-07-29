@@ -27,7 +27,7 @@ export default function Layout({ children }) {
   ];
 
   const adminMenuItems = [
-    { path: '/admin', label: 'Admin Dashboard', icon: '📊' },
+    { path: '/admin', label: 'Admin Dashboard', icon: '📊', exact: true },
     { path: '/admin/accounts', label: 'จัดการบัญชี', icon: '👤' },
     { path: '/admin/approvals', label: 'อนุมัติคำขอ', icon: '✅' },
     { path: '/schedule/create', label: 'สร้างตารางเวร', icon: '📝' }
@@ -119,7 +119,11 @@ export default function Layout({ children }) {
                         <Link 
                           key={item.path} 
                           href={item.path}
-                          className={`dropdown-item ${isActive(item.path) ? 'active' : ''}`}
+                          className={`dropdown-item ${
+                            item.exact 
+                              ? router.pathname === item.path ? 'active' : ''
+                              : isActive(item.path) ? 'active' : ''
+                          }`}
                         >
                           <span className="dropdown-icon">{item.icon}</span>
                           <span className="dropdown-item-text">{item.label}</span>

@@ -46,7 +46,6 @@ export default function AdminAccounts() {
       const q = query(
         nursesRef, 
         where('ward', '==', userData.ward),
-        orderBy('createdAt', 'desc')
       );
       const querySnapshot = await getDocs(q);
       
