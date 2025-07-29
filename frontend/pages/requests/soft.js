@@ -105,12 +105,47 @@ export default function SoftRequest() {
     );
   };
 
-  const removeRequest = (index) => {
+  const removeRequest = async (index) => {
+    if (!confirm('ต้องการลบคำขอนี้หรือไม่?')) {
+      return;
+    }
+
     const updatedRequests = requests.filter((_, i) => i !== index);
-    setRequests(updatedRequests);
-    setHighPriorityCount(
-      updatedRequests.filter(r => r.is_high_priority).length
-    );
+    
+    // บันทึกทันทีหลังจากลบ
+    setSaving(true);
+    try {
+      const [year, month] = selectedMonth.split('-');
+      const requestData = {
+        nurseId: userData.id,
+        ward: userData.ward,
+        year: parseInt(year),
+        month: parseInt(month),
+        requests: updatedRequests,
+        createdAt: existingRequest?.createdAt || new Date(),
+        updatedAt: new Date()
+      };
+
+      if (existingRequest) {
+        await setDoc(doc(db, 'softRequests', existingRequest.id), requestData);
+      } else {
+        const docId = `${userData.id}_${year}_${month}`;
+        await setDoc(doc(db, 'softRequests', docId), requestData);
+      }
+
+      // อัพเดท state หลังบันทึกสำเร็จ
+      setRequests(updatedRequests);
+      setHighPriorityCount(
+        updatedRequests.filter(r => r.is_high_priority).length
+      );
+      
+      alert('ลบคำขอสำเร็จ');
+    } catch (error) {
+      console.error('Error removing request:', error);
+      alert('เกิดข้อผิดพลาดในการลบคำขอ');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const addSpecificShift = (requestIndex) => {
@@ -145,23 +180,21 @@ export default function SoftRequest() {
   };
 
   const handleSubmit = async () => {
-    if (requests.length === 0) {
-      alert('กรุณาเพิ่มคำขออย่างน้อย 1 รายการ');
-      return;
-    }
+    // ตรวจสอบความถูกต้องของข้อมูลเฉพาะเมื่อมีคำขอ
+    if (requests.length > 0) {
+      const validRequests = requests.filter(req => {
+        if (req.type === 'no_specific_days') {
+          return req.value && req.value.length > 0;
+        } else if (req.type === 'request_specific_shifts_on_days') {
+          return req.value && req.value.length > 0;
+        }
+        return true;
+      });
 
-    const validRequests = requests.filter(req => {
-      if (req.type === 'no_specific_days') {
-        return req.value && req.value.length > 0;
-      } else if (req.type === 'request_specific_shifts_on_days') {
-        return req.value && req.value.length > 0;
+      if (validRequests.length !== requests.length) {
+        alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+        return;
       }
-      return true;
-    });
-
-    if (validRequests.length !== requests.length) {
-      alert('กรุณากรอกข้อมูลให้ครบถ้วน');
-      return;
     }
 
     setSaving(true);
@@ -185,6 +218,9 @@ export default function SoftRequest() {
       }
 
       alert('บันทึกคำขอสำเร็จ');
+      
+      // รีโหลดข้อมูลหลังบันทึกสำเร็จ
+      await loadExistingRequest();
     } catch (error) {
       console.error('Error saving request:', error);
       alert('เกิดข้อผิดพลาดในการบันทึก');
@@ -289,9 +325,10 @@ export default function SoftRequest() {
                         <button
                           className="remove-button"
                           onClick={() => removeRequest(index)}
+                          disabled={saving}
                           title="ลบคำขอ"
                         >
-                          ✕
+                          {saving ? '...' : '✕'}
                         </button>
                       </div>
 
@@ -415,7 +452,7 @@ export default function SoftRequest() {
                     </button>
                   )}
                   
-                  {requests.length > 0 && (
+                  {(requests.length > 0 || existingRequest) && (
                     <button
                       className="btn btn-primary"
                       onClick={handleSubmit}
@@ -562,6 +599,11 @@ export default function SoftRequest() {
 
           .remove-button:hover {
             background: #fc8181;
+          }
+
+          .remove-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
           }
 
           .request-content {
